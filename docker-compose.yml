@@ -1,0 +1,146 @@
+# Production stack: nginx (APP_PORT, default 8069) -> php-fpm + reverb
+#   cp .env.example .env
+#   php artisan key:generate   # or: docker compose run --rm --no-deps app php artisan key:generate --show
+#   docker compose up -d --build
+#   docker compose exec app php artisan db:seed
+services:
+  db:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-hr_tabulator_v2}
+      MYSQL_USER: ${DB_USERNAME:-tabulator}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Set DB_ROOT_PASSWORD in .env}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  phpmyadmin:
+    image: phpmyadmin:5
+    restart: unless-stopped
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ABSOLUTE_URI: http://${VITE_NETWORK_URL:-localhost}:${PHPMYADMIN_PORT:-8081}/
+      UPLOAD_LIMIT: 64M
+      MEMORY_LIMIT: 256M
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        VITE_APP_NAME: ${APP_NAME:-CSC TABULATOR}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-cjf9wuctt4oju4l6pky8}
+    image: hr-tabulator:app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTAINER_ROLE: app
+      DB_HOST: db
+      DB_PORT: "3306"
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/app-ready || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 45s
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+      args:
+        VITE_APP_NAME: ${APP_NAME:-CSC TABULATOR}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-cjf9wuctt4oju4l6pky8}
+    image: hr-tabulator:nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8069}:80"
+    depends_on:
+      app:
+        condition: service_healthy
+      reverb:
+        condition: service_started
+
+  reverb:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        VITE_APP_NAME: ${APP_NAME:-CSC TABULATOR}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-cjf9wuctt4oju4l6pky8}
+    image: hr-tabulator:app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTAINER_ROLE: reverb
+      DB_HOST: db
+      DB_PORT: "3306"
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 8080
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+      args:
+        VITE_APP_NAME: ${APP_NAME:-CSC TABULATOR}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-cjf9wuctt4oju4l6pky8}
+    image: hr-tabulator:app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      CONTAINER_ROLE: queue
+      DB_HOST: db
+      DB_PORT: "3306"
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
+    volumes:
+      - storage:/var/www/html/storage
+    depends_on:
+      app:
+        condition: service_healthy
+    command: ["php", "artisan", "queue:work", "--sleep=3", "--tries=3", "--timeout=90"]
+
+volumes:
+  mariadb_data:
+  storage:

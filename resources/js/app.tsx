@@ -6,13 +6,17 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { ToastProvider } from './context/ToastContext';
 
+const isDev = import.meta.env.DEV;
+const isHttps = window.location.protocol === 'https:';
+const pagePort = Number(window.location.port || (isHttps ? 443 : 80));
+
 configureEcho({
     broadcaster: 'reverb',
     key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST,
-    wsPort: import.meta.env.VITE_REVERB_PORT,
-    wssPort: import.meta.env.VITE_REVERB_PORT,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+    wsHost: isDev ? import.meta.env.VITE_REVERB_HOST : window.location.hostname,
+    wsPort: isDev ? Number(import.meta.env.VITE_REVERB_PORT) : pagePort,
+    wssPort: isDev ? Number(import.meta.env.VITE_REVERB_PORT) : pagePort,
+    forceTLS: isDev ? (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https' : isHttps,
     enabledTransports: ['ws', 'wss'],
 });
 
