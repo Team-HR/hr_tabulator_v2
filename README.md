@@ -133,7 +133,7 @@ Data lives in the `mariadb_data` volume; logs in the `storage` volume.
 
 ## Local development (without Docker)
 
-Needs PHP 8.2+, Composer, Node 22+, and MariaDB already running.
+Needs PHP 8.2+, Composer, Node **22.13+**, and MariaDB already running.
 
 ```bash
 git clone https://github.com/kimpoy31/hr_tabulator_v2.git
@@ -151,13 +151,26 @@ REVERB_SERVER_PORT=8025
 VITE_REVERB_PORT=8025
 ```
 
+`php artisan serve` binds to `VITE_NETWORK_URL` / `APP_PORT` (override with `SERVER_HOST`).
+
 ```bash
 php artisan key:generate
 php artisan migrate --seed
 composer run dev
 ```
 
-That starts Laravel, Vite, and Reverb together. The app URL follows `APP_URL` in `.env`.
+That starts Laravel, Vite, and Reverb in [`@laravel/multiplex`](https://www.npmjs.com/package/@laravel/multiplex) (one tab per process). `php artisan dev` is the same command.
+
+| Key | Action |
+| --- | --- |
+| `1`–`9` | Jump to a tab |
+| `/` | Search (`n` / `N` for next / previous) |
+| `r` | Restart the focused process |
+| `c` | Clear that tab’s output |
+| `s` / `t` | Stream mode / tabs |
+| `q` | Quit |
+
+Flags: `--stream`, `--inline`, `--timestamps`, `--no-restart`. Windows falls back to `concurrently`. The app URL follows `APP_URL` in `.env`.
 
 ---
 
@@ -166,5 +179,6 @@ That starts Laravel, Vite, and Reverb together. The app URL follows `APP_URL` in
 - **`Set DB_PASSWORD in .env` / `Set DB_ROOT_PASSWORD in .env`** — both must be non-empty before `docker compose up`.
 - **`APP_KEY is not set`** — generate a key (step 3) and restart: `docker compose up -d`.
 - **Port already in use** — stop `composer run dev` or anything else on 8069 / 8081, or change `APP_PORT` / `PHPMYADMIN_PORT`.
+- **`@laravel/multiplex is not installed`** — local `composer run dev` needs Node **22.13+** (`nvm use` if you have `.nvmrc`); then `npm install` again.
 - **Blank page / 502** — wait until `docker compose ps` shows `app` healthy; then `docker compose logs nginx app`.
 - **WebSockets not updating scores** — open the app via the host IP/hostname in `APP_URL`, not `localhost`, if judges are on other machines.
