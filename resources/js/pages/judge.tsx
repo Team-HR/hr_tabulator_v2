@@ -110,8 +110,10 @@ const judge = ({ eventUsers }: Props) => {
         clearAutosave();
 
         await router.patch(
-            route('update.scores', { scores }),
-            {},
+            route('update.scores'),
+            {
+                scores: (scores ?? []).map(({ id, score }) => ({ id, score })),
+            },
             {
                 preserveScroll: true,
                 preserveState: true,

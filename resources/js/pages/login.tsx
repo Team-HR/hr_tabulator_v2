@@ -28,6 +28,8 @@ const login = () => {
                 <label className="label">Username</label>
                 <input
                     type="text"
+                    name="username"
+                    autoComplete="username"
                     required
                     className={`input ${errors.username && 'input-error'}`}
                     placeholder="Username"
@@ -38,6 +40,8 @@ const login = () => {
                 <label className="label">Password</label>
                 <input
                     type="password"
+                    name="password"
+                    autoComplete="current-password"
                     required
                     className="input"
                     placeholder="Password"
