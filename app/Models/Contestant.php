@@ -15,6 +15,7 @@ class Contestant extends Model
     protected $fillable = [
         'event_id',
         'name',
+        'sort_order',
     ];
 
     public function event()

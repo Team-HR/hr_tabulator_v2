@@ -1,45 +1,12 @@
 <?php
 
 use App\Http\Controllers\Event\EventController;
-use App\Models\Event;
-use App\Models\EventUser;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Controllers\Judge\JudgeController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/judge', function () {
-        $user = Auth::user();
+    Route::get('/judge', [JudgeController::class, 'index'])->name('judge');
 
-        if($user->role !== 'judge'){
-            return to_route('home');
-        }
-
-        $events = EventUser::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->with([
-                'event.contestants',
-                'event.scores' => function ($query) use ($user) {
-                    $query->whereIn('event_user_id', function($sub) use ($user) {
-                        $sub->select('id')
-                            ->from('event_user')
-                            ->where('user_id', $user->id)
-                            ->where('status', 'active');
-                    });
-                },
-                'event.criteria'
-            ])
-            ->get();
-
-        return Inertia::render('judge', [
-            'eventUsers' => $events,
-        ]);
-    })->name('judge');
-
-     // PARTICIPANT CONTROLLER ROUTES
     Route::patch('/update-scores', [EventController::class, 'update_scores'])->name('update.scores');
-
+    Route::get('/judge/updated-event/{id}', [EventController::class, 'judge_updated_event'])->name('judge.updated.event');
 });
-
-// require __DIR__.'/settings.php';
-// require __DIR__.'/auth.php';

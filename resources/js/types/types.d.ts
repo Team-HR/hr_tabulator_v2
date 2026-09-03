@@ -7,6 +7,8 @@ export interface Criterion {
 export interface Event {
     id: number;
     name: string;
+    icon: string | null;
+    name_color: string | null;
     status: 'active' | 'in-active';
     criteria?: Criterion[];
     judges?: User[];
@@ -30,6 +32,7 @@ export interface Contestant {
     id: number;
     event_id: number;
     name: string;
+    sort_order: number;
     event?: Event;
     scores?: Score[];
     special_awards?: SpecialAward[];

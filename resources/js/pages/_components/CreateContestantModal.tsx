@@ -23,8 +23,8 @@ const CreateContestantModal = ({ btn_className, event_id }: ComponentProps) => {
         e.preventDefault();
 
         await router.post(
-            route('create.contestant', { name: contestant, event_id }),
-            {},
+            route('create.contestant'),
+            { name: contestant, event_id },
             {
                 onSuccess: () => {
                     closeModal();

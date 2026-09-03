@@ -6,16 +6,49 @@ use App\Http\Controllers\Controller;
 use App\Models\Contestant;
 use App\Models\Criterion;
 use App\Models\Event;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use App\Models\EventUser;
 use App\Models\Score;
 use App\Models\User;
 use Exception;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class JudgeController extends Controller
 {
+    public function index(): Response|RedirectResponse
+    {
+        $user = Auth::user();
+
+        if ($user->role !== 'judge') {
+            return to_route('home');
+        }
+
+        $events = EventUser::where('user_id', $user->id)
+            ->where('status', 'active')
+            ->with([
+                'event.contestants',
+                'event.scores' => function ($query) use ($user) {
+                    $query->whereIn('event_user_id', function ($sub) use ($user) {
+                        $sub->select('id')
+                            ->from('event_user')
+                            ->where('user_id', $user->id)
+                            ->where('status', 'active');
+                    });
+                },
+                'event.criteria',
+            ])
+            ->get();
+
+        return Inertia::render('judge', [
+            'eventUsers' => $events,
+        ]);
+    }
+
     public function add_judge (Request $request) {
        $validated = $request->validate([
             'event_id' => 'required|integer',
@@ -41,6 +74,8 @@ class JudgeController extends Controller
                 ]);
             }
         }
+
+        return back()->with('success', 'Judge added successfully.');
     }
 
     public function remove_judge (Request $request) {
@@ -58,6 +93,8 @@ class JudgeController extends Controller
             if ($event) {
                 $event->delete();
             }
+
+            return back()->with('success', 'Judge removed successfully.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->validator)->withInput();
         } catch (Exception $e) {
@@ -83,6 +120,33 @@ class JudgeController extends Controller
             ]);
 
             return back()->with('success', 'Judge created successfully.');
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->validator)->withInput();
+        } catch (Exception $e) {
+            return back()->with('error', 'An unexpected error occurred. Please try again.');
+        }
+    }
+
+    public function update_judge(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'user_id' => 'required|integer|exists:users,id',
+                'fullname' => 'required|string',
+                'username' => 'required|string|unique:users,username,' . $request->input('user_id'),
+                'password' => 'required|string',
+            ]);
+
+            $user = User::findOrFail($validated['user_id']);
+
+            $user->update([
+                'name' => $validated['fullname'],
+                'username' => $validated['username'],
+                'password' => $validated['password'],
+                'plain_password' => $validated['password'],
+            ]);
+
+            return back()->with('success', 'Judge updated successfully.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->validator)->withInput();
         } catch (Exception $e) {

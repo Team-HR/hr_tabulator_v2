@@ -15,6 +15,8 @@ class Event extends Model
      */
     protected $fillable = [
         'name',
+        'icon',
+        'name_color',
         'status',
     ];
 
@@ -30,9 +32,9 @@ class Event extends Model
             ->where('role', 'judge'); // <-- filter to only users with role 'judge'
     }
 
-      public function contestants()
+    public function contestants()
     {
-        return $this->hasMany(Contestant::class);
+        return $this->hasMany(Contestant::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function scores()

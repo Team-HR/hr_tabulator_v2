@@ -1,5 +1,5 @@
 import { useToast } from '@/context/ToastContext';
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useState } from 'react';
 
 interface ComponentProps {
@@ -8,7 +8,6 @@ interface ComponentProps {
 }
 
 const CreateJudgeModal = ({ event_id, btn_className }: ComponentProps) => {
-    const { errors } = usePage().props;
     const { showToast } = useToast();
 
     const [name, setName] = useState('');
@@ -22,16 +21,16 @@ const CreateJudgeModal = ({ event_id, btn_className }: ComponentProps) => {
         e.preventDefault();
 
         await router.post(
-            route('event.create.judge', { fullname: name, username, password }),
-            {},
+            route('event.create.judge'),
+            { fullname: name, username, password },
             {
                 onSuccess: () => {
                     showToast('Successfully created judge account', 'success');
                     closeModal();
                 },
-                onError: () => {
-                    if (errors.username) {
-                        setUsernameError(errors.username);
+                onError: (pageErrors) => {
+                    if (pageErrors.username) {
+                        setUsernameError(pageErrors.username);
                     }
                 },
             },

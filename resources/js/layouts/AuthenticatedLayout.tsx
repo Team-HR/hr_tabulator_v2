@@ -64,7 +64,7 @@ const AuthenticatedLayout = ({ children, className }: { children: ReactNode; cla
             {/* Footer */}
             {route().current('judge') && (
                 <footer className="footer-fade-long footer flex items-center justify-evenly bg-base-200/50 p-2 text-base-content sm:footer-horizontal">
-                    <img src="assets/125th_LOGO.webp" alt="logos" className="max-h-40" />
+                    <img src="assets/LOGO.png" alt="logos" className="max-h-40" />
                     <img src="assets/CSCBPLOGOS.webp" alt="logos" className="max-h-32" />
                     <img src="assets/PCSATHEME.webp" alt="logos" className="max-h-16" />
                 </footer>

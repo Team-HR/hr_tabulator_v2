@@ -1,16 +1,32 @@
 import { User } from '@/types';
 import { Event } from '@/types/types';
 import { router } from '@inertiajs/react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import CreateJudgeModal from './CreateJudgeModal';
+import EditJudgeModal from './EditJudgeModal';
 
 const JudgesComponent = ({ event, judges }: { event: Event; judges: User[] }) => {
     const [selectedJudge, setSelectedJudge] = useState<User | null>(null);
+    const [editingJudge, setEditingJudge] = useState<User | null>(null);
+    const [isEditOpen, setIsEditOpen] = useState(false);
 
     const handleJudgeRemoval = async () => {
         if (!selectedJudge) return;
-        await router.delete(route('event.remove.judge', { event_id: event.id, user_id: selectedJudge.id }));
+        await router.delete(route('event.remove.judge'), {
+            data: { event_id: event.id, user_id: selectedJudge.id },
+        });
         setSelectedJudge(null);
+    };
+
+    const openEditModal = (judge: User) => {
+        setEditingJudge(judge);
+        setIsEditOpen(true);
+    };
+
+    const closeEditModal = () => {
+        setIsEditOpen(false);
+        setEditingJudge(null);
     };
 
     return (
@@ -41,7 +57,12 @@ const JudgesComponent = ({ event, judges }: { event: Event; judges: User[] }) =>
                                             <td>
                                                 <button
                                                     className="btn btn-xs btn-success"
-                                                    onClick={() => router.post(route('event.add.judge', { event_id: event.id, user_id: judge.id }))}
+                                                    onClick={() =>
+                                                        router.post(route('event.add.judge'), {
+                                                            event_id: event.id,
+                                                            user_id: judge.id,
+                                                        })
+                                                    }
                                                 >
                                                     Add
                                                 </button>
@@ -75,16 +96,28 @@ const JudgesComponent = ({ event, judges }: { event: Event; judges: User[] }) =>
                                             <th>{judge.name}</th>
                                             <td>{judge.username}</td>
                                             <td>{judge.plain_password}</td>
-                                            <td>
+                                            <td className="flex gap-1">
                                                 <button
-                                                    className="btn btn-xs btn-error"
+                                                    type="button"
+                                                    className="btn btn-square btn-xs btn-info"
+                                                    title="Edit"
+                                                    aria-label="Edit"
+                                                    onClick={() => openEditModal(judge)}
+                                                >
+                                                    <Pencil size={14} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-square btn-xs btn-error"
+                                                    title="Remove"
+                                                    aria-label="Remove"
                                                     onClick={() => {
                                                         setSelectedJudge(judge);
                                                         const modal = document.getElementById('deleteJudgeModal') as HTMLDialogElement | null;
                                                         modal?.showModal();
                                                     }}
                                                 >
-                                                    Remove
+                                                    <Trash2 size={14} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -117,6 +150,8 @@ const JudgesComponent = ({ event, judges }: { event: Event; judges: User[] }) =>
                     </div>
                 </div>
             </dialog>
+
+            <EditJudgeModal judge={editingJudge} open={isEditOpen} onClose={closeEditModal} />
         </div>
     );
 };

@@ -1,108 +1,38 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Contestant\ContestantController;
 use App\Http\Controllers\Event\EventController;
 use App\Http\Controllers\Judge\JudgeController;
-use App\Http\Controllers\Contestant\ContestantController;
-use App\Models\Event;
-use App\Models\EventUser;
-use App\Models\User;
-use Clue\Redis\Protocol\Model\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::middleware('guest')->group(function () {
-    Route::get('/sign-in', function () {
-        return Inertia::render('login');
-    })->name('login');
-
-    Route::post('/sign-in', [AuthController::class,"login"])->name('login.post');
+    Route::get('/sign-in', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/sign-in', [AuthController::class, 'login'])->name('login.post');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::post('/sign-out', function () {
-        Auth::logout();
+    Route::post('/sign-out', [AuthController::class, 'logout'])->name('logout');
 
-        request()->session()->invalidate();
-        request()->session()->regenerateToken();
-
-        return to_route('login');
-    })->name('logout');
-
-    Route::get('/', function () {
-        $user = Auth::user();
-
-        if($user->role !== 'administrator'){
-            return to_route('judge');
-        }
-        
-        return Inertia::render('welcome',[
-            'events' => Event::where('status','active')->get(),
-        ]);
-    })->name('home');
-
-    Route::get('/admin/event/{id}', function ($id) {
-        $user = Auth::user();
-
-        if($user->role !== 'administrator'){
-            return to_route('judge');
-        }
-        
-        $userIds = EventUser::where('event_id', $id)->where('status','active')->pluck('user_id')->toArray();
-        $judges = User::where('status', 'active')
-            ->whereNotIn('id', $userIds)
-            ->whereNot('username', 'admin')
-            ->get();
-
-        $event = Event::with([
-            'criteria',
-            'judges.eventUsers',           // So you can match event_user_id in scores
-            'judges.scoresGiven',          // Optional, if you want full score data
-            'contestants.scores.criterion', // Load scores and their criteria
-            'specialAwards' => function ($query) {
-                $query->where('status', 'active')
-                ->with('contestant');
-            }
-        ])->findOrFail($id);
-
-        return Inertia::render('admin', [
-            'judges_to_choose_from' => $judges,
-            'event' => $event,
-        ]);
-    })->name('admin');
-
-    Route::get('updated-event/{id}', function($id){
-        $event = Event::with([
-            'criteria',
-            'judges.eventUsers',           // So you can match event_user_id in scores
-            'judges.scoresGiven',          // Optional, if you want full score data
-            'contestants.scores.criterion', // Load scores and their criteria
-            'specialAwards' => function ($query) {
-                $query->where('status', 'active')
-                ->with('contestant');
-            }
-        ])->findOrFail($id);
-
-        return response()->json($event);
-        // return to_route('admin', $event->id);
-    })->name('get.updated.event');
+    Route::get('/', [EventController::class, 'home'])->name('home');
+    Route::get('/admin/event/{id}', [EventController::class, 'admin'])->name('admin');
+    Route::get('updated-event/{id}', [EventController::class, 'updated_event'])->name('get.updated.event');
 
     Route::post('/event/create', [EventController::class, 'event_create'])->name('event.create');
+    Route::patch('/event/update', [EventController::class, 'event_update'])->name('event.update');
 
-    // JUDGE CONTROLLER ROUTES
     Route::post('/add-judge', [JudgeController::class, 'add_judge'])->name('event.add.judge');
     Route::delete('/remove-judge', [JudgeController::class, 'remove_judge'])->name('event.remove.judge');
     Route::post('/create-judge', [JudgeController::class, 'create_judge'])->name('event.create.judge');
+    Route::patch('/update-judge', [JudgeController::class, 'update_judge'])->name('event.update.judge');
 
-    // PARTICIPANT CONTROLLER ROUTES
     Route::post('/create-contestant', [ContestantController::class, 'create_contestant'])->name('create.contestant');
     Route::delete('/remove-contestant', [ContestantController::class, 'remove_contestant'])->name('remove.contestant');
+    Route::patch('/update-contestant', [ContestantController::class, 'update_contestant'])->name('update.contestant');
+    Route::patch('/reorder-contestants', [ContestantController::class, 'reorder_contestants'])->name('reorder.contestants');
 
-    // AWARD CONTROLLER
     Route::post('/create-award', [EventController::class, 'create_award'])->name('create.award');
     Route::patch('/remove-award', [EventController::class, 'remove_award'])->name('remove.award');
-    
 });
 
 require __DIR__.'/judge.php';
